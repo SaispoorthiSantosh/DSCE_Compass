@@ -781,6 +781,125 @@ window.captureCampusGpsCoordinate = function(placeId) {
   );
 };
 
+/* TEMPORARY GPS COLLECTION PANEL */
+
+const gpsPlaceSelect = document.getElementById("gpsPlaceSelect");
+const captureGpsBtn = document.getElementById("captureGpsBtn");
+const copyGpsBtn = document.getElementById("copyGpsBtn");
+
+const gpsLatitude = document.getElementById("gpsLatitude");
+const gpsLongitude = document.getElementById("gpsLongitude");
+const gpsAccuracy = document.getElementById("gpsAccuracy");
+const gpsCollectorStatus = document.getElementById("gpsCollectorStatus");
+
+const GPS_STORAGE_KEY = "dsce_collected_gps_coordinates";
+
+let capturedGpsCoordinates = {};
+
+try {
+  capturedGpsCoordinates =
+    JSON.parse(localStorage.getItem(GPS_STORAGE_KEY)) || {};
+} catch (error) {
+  capturedGpsCoordinates = {};
+}
+
+// Populate dropdown using existing building data.
+placeById.forEach(function(place, id) {
+  const option = document.createElement("option");
+  option.value = id;
+  option.textContent = place.name;
+  gpsPlaceSelect.appendChild(option);
+});
+
+// Capture selected building coordinates.
+captureGpsBtn.addEventListener("click", function() {
+  const placeId = gpsPlaceSelect.value;
+  const place = placeById.get(placeId);
+
+  if (!place) {
+    gpsCollectorStatus.textContent = "Please select a building.";
+    return;
+  }
+
+  if (!navigator.geolocation) {
+    gpsCollectorStatus.textContent =
+      "GPS is not supported by this browser.";
+    return;
+  }
+
+  gpsCollectorStatus.textContent =
+    "Getting GPS coordinates. Please wait...";
+
+  navigator.geolocation.getCurrentPosition(
+    function(position) {
+      const latitude = position.coords.latitude;
+      const longitude = position.coords.longitude;
+      const accuracy = position.coords.accuracy;
+
+      capturedGpsCoordinates[placeId] = {
+        latitude: latitude,
+        longitude: longitude,
+        accuracy: accuracy
+      };
+
+      localStorage.setItem(
+        GPS_STORAGE_KEY,
+        JSON.stringify(capturedGpsCoordinates)
+      );
+
+      gpsLatitude.textContent = latitude.toFixed(7);
+      gpsLongitude.textContent = longitude.toFixed(7);
+      gpsAccuracy.textContent =
+        "Approximately " + Math.round(accuracy) + " metres";
+
+      gpsCollectorStatus.textContent =
+        "Coordinates saved for " + place.name + ".";
+    },
+
+    function(error) {
+      gpsCollectorStatus.textContent =
+        "GPS error: " + error.message;
+    },
+
+    {
+      enableHighAccuracy: true,
+      timeout: 20000,
+      maximumAge: 0
+    }
+  );
+});
+
+// Copy all collected coordinates.
+copyGpsBtn.addEventListener("click", async function() {
+  const entries = Object.entries(capturedGpsCoordinates);
+
+  if (entries.length === 0) {
+    gpsCollectorStatus.textContent =
+      "No coordinates have been collected yet.";
+    return;
+  }
+
+  const output = entries.map(function(entry) {
+    const id = entry[0];
+    const data = entry[1];
+
+    return `${id}: {
+  latitude: ${data.latitude.toFixed(7)},
+  longitude: ${data.longitude.toFixed(7)}
+}, // Accuracy: ${Math.round(data.accuracy)} metres`;
+  }).join("\n\n");
+
+  try {
+    await navigator.clipboard.writeText(output);
+    gpsCollectorStatus.textContent =
+      "All collected coordinates copied!";
+  } catch (error) {
+    gpsCollectorStatus.textContent =
+      "Copy failed. Please try again.";
+  }
+});
+
+
 /* Button events */
 document.getElementById("findBtn")
  .addEventListener("click",findRoute);
