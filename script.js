@@ -148,6 +148,15 @@ const MAP_POSITIONS = {
  parking2:[155,445],
  centreofexcellence:[780,755]
 };
+/* GPS coordinates of campus locations */
+const GPS_NODE_COORDINATES = {
+  // Add actual coordinates collected at DSCE.
+  // Example:
+  // entrance1: { latitude: 12.xxxxxx, longitude: 77.xxxxxx },
+  // mechanical: { latitude: 12.xxxxxx, longitude: 77.xxxxxx }
+};
+
+const NODE_MATCH_RADIUS_METERS = 60;
 
 /* Preferred routes from First Entrance */
 const PREFERRED_FROM_FIRST_ENTRANCE = {
@@ -613,7 +622,49 @@ function resetApp(){
 /* CURRENT LOCATION DETECTION */
 
 let userCoordinates = null;
+function getNearestCampusPlace(latitude, longitude) {
+  let nearestPlace = null;
+  let minimumDistance = Infinity;
 
+  for (const [id, coordinates] of Object.entries(GPS_NODE_COORDINATES)) {
+    const distance = gpsDistanceMeters(
+      latitude,
+      longitude,
+      coordinates.latitude,
+      coordinates.longitude
+    );
+
+    if (distance < minimumDistance) {
+      minimumDistance = distance;
+      nearestPlace = placeById.get(id);
+    }
+  }
+
+  if (
+    minimumDistance > NODE_MATCH_RADIUS_METERS ||
+    !nearestPlace
+  ) {
+    return null;
+  }
+
+  return nearestPlace;
+}
+function gpsDistanceMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+
+  const toRadians = value => value * Math.PI / 180;
+
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRadians(lat1)) *
+    Math.cos(toRadians(lat2)) *
+    Math.sin(dLon / 2) ** 2;
+
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 function getCurrentLocation() {
 
   if (!navigator.geolocation) {
@@ -647,6 +698,27 @@ function getCurrentLocation() {
       );
 
       console.log("Current location:", userCoordinates);
+      const nearestPlace = getNearestCampusPlace(
+  latitude,
+  longitude
+);
+
+if (nearestPlace) {
+  sourceSelect.value = nearestPlace.id;
+
+  const buildingInfo = nearestPlace.building
+    ? ` (${nearestPlace.building})`
+    : "";
+
+  setStatus(
+    `Starting point detected: ${nearestPlace.name}${buildingInfo}`
+  );
+} else {
+  setStatus(
+    "GPS received, but no nearby campus building could be identified. Please select your starting point manually.",
+    true
+  );
+}
     },
 
     function(error) {
@@ -672,7 +744,42 @@ function getCurrentLocation() {
 
   );
 }
+/* COLLECT REAL GPS COORDINATES AT CAMPUS */
 
+window.captureCampusGpsCoordinate = function(placeId) {
+  const place = placeById.get(placeId);
+
+  if (!place) {
+    console.error("Invalid campus location ID:", placeId);
+    return;
+  }
+
+  setStatus(`Getting GPS coordinates for ${place.name}...`);
+
+  navigator.geolocation.getCurrentPosition(
+    function(position) {
+      const latitude = position.coords.latitude;
+      const longitude = position.coords.longitude;
+      const accuracy = Math.round(position.coords.accuracy);
+
+      console.log(
+        `${placeId}: { latitude: ${latitude.toFixed(7)}, longitude: ${longitude.toFixed(7)} },`
+      );
+
+      setStatus(
+        `Coordinates captured for ${place.name}. Accuracy: approximately ${accuracy} metres.`
+      );
+    },
+    function(error) {
+      setStatus("Unable to capture GPS coordinates. Please try again.", true);
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 20000,
+      maximumAge: 0
+    }
+  );
+};
 
 /* Button events */
 document.getElementById("findBtn")
