@@ -59,6 +59,40 @@
 </div>
     </section>
 
+
+<!-- TEMPORARY CAMPUS GPS COLLECTION PANEL -->
+<section class="panel gps-collector">
+  <h3>Collect Campus GPS Coordinates</h3>
+  <p>Select the building where you are currently standing.</p>
+
+  <div class="field">
+    <label for="gpsPlaceSelect">Select building</label>
+    <select id="gpsPlaceSelect">
+      <option value="">Select building</option>
+    </select>
+  </div>
+
+  <button id="captureGpsBtn" class="primary-btn" type="button">
+    📍 Capture GPS
+  </button>
+
+  <div id="gpsCaptureResult" aria-live="polite">
+    <p>Latitude: <strong id="gpsLatitude">—</strong></p>
+    <p>Longitude: <strong id="gpsLongitude">—</strong></p>
+    <p>Accuracy: <strong id="gpsAccuracy">—</strong></p>
+  </div>
+
+  <button id="copyGpsBtn" class="secondary-btn" type="button">
+    Copy All Coordinates
+  </button>
+
+  <p id="gpsCollectorStatus" class="small-note">
+    Captured coordinates will be saved on this device.
+  </p>
+</section>
+<!-- END GPS COLLECTION PANEL -->
+
+
     <p id="status" class="status" role="status">
       Select a starting point and destination.
     </p>
